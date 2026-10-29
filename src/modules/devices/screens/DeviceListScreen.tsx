@@ -25,7 +25,7 @@ export function DeviceListScreen({devices,mode,loading,error}:{devices:Device[];
         <select aria-label="Lọc Site" value={site} onChange={e=>{setSite(e.target.value);setPage(1)}}><option value="">Tất cả Site</option>{sites.map(s=><option key={s}>{s}</option>)}</select>
         <select aria-label="Lọc Status" value={status} onChange={e=>{setStatus(e.target.value);setPage(1)}}><option value="">Tất cả Status</option>{statuses.map(s=><option key={s}>{s}</option>)}</select>
       </div>
-      {visible.length ? <DeviceTable devices={visible}/> : <Empty title="Không có Device phù hợp" description={loading?'Đang tải catalog...':'Nếu Live, kiểm tra lỗi và response danh sách Bridge.'}/>}
+      {visible.length ? <DeviceTable devices={visible}/> : <Empty title={loading ? 'Đang tải catalog…' : error ? 'Catalog chưa khả dụng' : 'Không có Device phù hợp'} description={error ? 'Dùng nút Làm mới sau khi kiểm tra kết nối hoặc phiên đăng nhập Frappe.' : undefined}/>}
       <div className="pagination"><span>Trang {current}/{pages}</span><div><button disabled={current===1} onClick={()=>setPage(n=>Math.max(1,n-1))}>Trước</button><button disabled={current>=pages} onClick={()=>setPage(n=>n+1)}>Sau</button></div></div>
       <p className="muted footnote">Lọc và phân trang giao diện trên catalog đã tải; phạm vi Organization và quyền đọc được backend kiểm soát.</p>
     </Panel>

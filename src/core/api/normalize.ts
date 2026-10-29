@@ -1,4 +1,4 @@
-import type { Alarm, AlarmListPage, Device, DeviceListPage, Latest, Summary, Telemetry, ConnectionState, S1Reading, DoorState, LatestMetric, ProfileDataPoint } from '../../shared/types/iot'
+import type { Alarm, AlarmListPage, Device, DeviceCommand, DeviceConfiguration, DeviceListPage, Incident, IncidentListPage, Latest, Summary, ConnectionState, S1Reading, DoorState, LatestMetric, ProfileDataPoint, ProfileCommand, ProfileEventType } from '../../shared/types/iot'
 
 export function obj(v: unknown): Record<string, unknown> | null {
   return v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : null
@@ -38,7 +38,7 @@ export function normalizeDevice(raw: unknown): Device {
   const v = obj(wrapper?.device) ?? wrapper
   if (!v) throw Error('Device phải là object JSON')
   const deviceId = str(pick(v, ['device_id', 'deviceId', 'id']))
-  if (!deviceId) throw Error('Device thiếu trường device_id; cần sửa api/normalize.ts theo route.py')
+  if (!deviceId) throw Error('Device API thiếu trường device_id')
   return {
     deviceId,
     name: str(pick(v, ['device_name', 'display_name', 'name', 'device_id']), deviceId),
@@ -66,8 +66,8 @@ export function normalizeDevice(raw: unknown): Device {
   }
 }
 export function normalizeSummary(raw: unknown): Summary {
-  const v = extract(raw)
-  if (!obj(v)) throw Error('Summary JSON không phải object')
+  const v = obj(obj(raw)?.message)?.summary
+  if (!obj(v)) throw Error('Summary API thiếu message.summary')
   const alarmsCandidate = pick(v, ['recent_alarms', 'alarms.items', 'alarm_items'])
   const alarmStatusCounts = obj(pick(v, ['alarms_by_status']))
   const activeFromStatuses = alarmStatusCounts
@@ -75,70 +75,114 @@ export function normalizeSummary(raw: unknown): Summary {
       ['closed', 'cleared', 'resolved', 'cancelled'].includes(status.toLowerCase())
         ? total : total + (number(count) ?? 0), 0)
     : null
+  const activeFromSummary = ['alarms.new', 'alarms.acknowledged', 'alarms.in_progress']
+    .map(key => num(v, [key]))
+  const active = activeFromSummary.every(count => count !== null)
+    ? activeFromSummary.reduce<number>((sum, count) => sum + (count ?? 0), 0)
+    : null
   return {
-    sites: num(v, ['site_count', 'sites_count', 'total_sites', 'sites.total', 'counts.sites']),
-    zones: num(v, ['zone_count', 'zones_count', 'total_zones', 'zones.total', 'counts.zones']),
+    sites: num(v, ['site_count', 'sites_count', 'total_sites', 'sites.total', 'sites', 'counts.sites']),
+    zones: num(v, ['zone_count', 'zones_count', 'total_zones', 'zones.total', 'zones', 'counts.zones']),
     devices: num(v, ['device_count', 'devices_count', 'total_devices', 'devices.total', 'counts.devices']),
     online: num(v, ['online_count', 'online_devices', 'counts.online', 'connectivity.online', 'connection.online', 'devices.online']),
     offline: num(v, ['offline_count', 'offline_devices', 'counts.offline', 'connectivity.offline', 'connection.offline', 'devices.offline']),
     alarmsTotal: num(v, ['alarm_count', 'total_alarms', 'counts.alarms', 'alarms.total', 'alarm_stats.total']),
-    alarmsActive: num(v, ['active_alarm_count', 'active_alarms', 'alarms.active', 'alarm_stats.active']) ?? activeFromStatuses,
+    alarmsActive: num(v, ['active_alarm_count', 'active_alarms', 'alarms.active', 'alarm_stats.active']) ?? active ?? activeFromStatuses,
     doorOpen: num(v, ['door_open_count', 'doors.open', 'door_open']),
+    incidents: num(v, ['incidents', 'incident_count', 'counts.incidents']),
     recentAlarms: Array.isArray(alarmsCandidate) ? alarmsCandidate.map(normalizeAlarm) : null,
   }
 }
 export function normalizeAlarm(raw: unknown): Alarm {
   const v = obj(raw) ?? {}
   return {
-    id: str(pick(v, ['alarm_key', 'alarm_id', 'name', 'id']), 'Unknown'),
+    id: str(pick(v, ['name', 'alarm_id', 'id', 'alarm_key']), 'Unknown'),
+    alarmKey: str(pick(v, ['alarm_key'])) || null,
     deviceId: str(pick(v, ['device_id', 'device']), ''),
+    site: str(pick(v, ['site'])) || null,
+    zone: str(pick(v, ['zone'])) || null,
     status: str(pick(v, ['status']), 'Unknown'),
     severity: str(pick(v, ['severity', 'level']), 'Unknown'),
     summary: str(pick(v, ['summary', 'message', 'title']), 'Không có mô tả'),
     timestamp: str(pick(v, ['last_occurred', 'created_at', 'timestamp', 'modified', 'occurred_at'])) || null,
+    firstOccurred: str(pick(v, ['first_occurred'])) || null,
     eventType: str(pick(v, ['event_type'])),
     ruleId: str(pick(v, ['rule_id', 'rule'])),
     occurrenceCount: num(v, ['occurrence_count']),
     clearedAt: str(pick(v, ['cleared_at'])) || null,
+    incident: str(pick(v, ['incident'])) || null,
   }
 }
-export function normalizeAlarmList(raw: unknown): AlarmListPage {
+export function normalizeIncident(raw: unknown): Incident {
+  const v = obj(raw) ?? {}
+  return {
+    id: str(pick(v, ['name', 'id']), 'Unknown'), title: str(pick(v, ['title']), 'Không có tiêu đề'),
+    status: str(pick(v, ['status']), 'Unknown'), assignedTo: str(pick(v, ['assigned_to'])) || null,
+    priority: str(pick(v, ['priority']), '—'), dueDate: str(pick(v, ['due_date'])) || null,
+    deviceId: str(pick(v, ['device'])) || null, site: str(pick(v, ['site'])) || null,
+    zone: str(pick(v, ['zone'])) || null, resolution: str(pick(v, ['resolution'])) || null,
+    rootCause: str(pick(v, ['root_cause'])) || null, closedAt: str(pick(v, ['closed_at'])) || null,
+  }
+}
+function resourceItems(raw: unknown): { items: unknown[]; total: number | null } {
+  const response = obj(raw)
+  const extracted = extract(raw)
+  const v = obj(extracted)
+  const items = Array.isArray(extracted) ? extracted : Array.isArray(v?.data) ? v.data : Array.isArray(v?.items) ? v.items : null
+  if (!items) throw Error('Frappe Resource API phải trả data[]')
+  return { items, total: number(response?.total_count) ?? number(v?.total_count) ?? number(v?.total) }
+}
+export function normalizeAlarmList(raw: unknown, page = 1, pageSize = 20): AlarmListPage {
+  const { items, total } = resourceItems(raw)
+  return { items: items.map(normalizeAlarm), total, page, pageSize, hasMore: items.length === pageSize }
+}
+export function normalizeIncidentList(raw: unknown, page = 1, pageSize = 20): IncidentListPage {
+  const { items, total } = resourceItems(raw)
+  return { items: items.map(normalizeIncident), total, page, pageSize, hasMore: items.length === pageSize }
+}
+const bool = (v: unknown) => v === true || v === 1 || v === '1' || String(v).toLowerCase() === 'true'
+export function normalizeDeviceConfiguration(raw: unknown): DeviceConfiguration {
   const v = obj(extract(raw))
-  if (!v || !Array.isArray(v.items)) throw Error('Alarm List phải có items[]')
-  const total = number(v.total)
-  const page = number(v.page)
-  const pageSize = number(v.page_size)
-  if (total === null || page === null || pageSize === null) throw Error('Alarm List thiếu total/page/page_size')
-  return { items: v.items.map(normalizeAlarm), total, page, pageSize }
+  const profile = obj(v?.profile)
+  if (!v || !profile) throw Error('Device Configuration thiếu profile')
+  const dataPoints = (Array.isArray(profile.data_points) ? profile.data_points : []).map(point => {
+    const row = obj(point) ?? {}
+    const code = str(pick(row, ['data_point_code', 'code']))
+    return { code: code.toLowerCase(), label: str(pick(row, ['data_point_name', 'label', 'name']), code), dataType: str(row.data_type).toLowerCase(), unit: str(row.unit) || null }
+  }).filter(point => point.code)
+  const eventTypes: ProfileEventType[] = (Array.isArray(profile.event_types) ? profile.event_types : []).map(item => {
+    const row = obj(item) ?? {}
+    const code = str(pick(row, ['event_code', 'code']))
+    return { code, label: str(pick(row, ['event_name', 'label', 'name']), code), description: str(row.description) || null }
+  }).filter(item => item.code)
+  const commands: ProfileCommand[] = (Array.isArray(profile.commands) ? profile.commands : []).map(item => {
+    const row = obj(item) ?? {}
+    const code = str(pick(row, ['command_code', 'code']))
+    return { code, label: str(pick(row, ['command_name', 'label', 'name']), code), description: str(row.description) || null, riskLevel: str(row.risk_level, 'Unknown'), requiresApproval: row.requires_approval === undefined ? true : bool(row.requires_approval), parameters: row.parameters ?? row.parameters_json ?? row.parameters_schema ?? null }
+  }).filter(item => item.code)
+  return { profile: { code: str(profile.profile_code), name: str(profile.profile_name, str(profile.profile_code)), version: number(profile.version), protocol: str(profile.protocol) || null, supportsTelemetry: bool(profile.supports_telemetry), supportsEvents: bool(profile.supports_events), supportsCommands: bool(profile.supports_commands), dataPoints, eventTypes, commands }, rules: (Array.isArray(v.rules) ? v.rules : []).map(item => obj(item)).filter((item): item is Record<string, unknown> => item !== null) }
+}
+export function normalizeCommandList(raw: unknown): DeviceCommand[] {
+  const v = extract(raw)
+  const rows = Array.isArray(v) ? v : obj(v)?.data
+  if (!Array.isArray(rows)) throw Error('Command List phải có data[]')
+  return rows.map(item => {
+    const row = obj(item) ?? {}
+    return { id: str(pick(row, ['command_id', 'name', 'id']), 'Unknown'), deviceId: str(pick(row, ['device', 'device_id'])), code: str(pick(row, ['command_code', 'code']), 'Unknown'), status: str(row.status, 'Unknown'), requestedAt: str(row.requested_at) || null, requestedBy: str(row.requested_by) || null, expiresAt: str(row.expires_at) || null, attemptCount: number(row.attempt_count), dispatchedAt: str(row.dispatched_at) || null, acknowledgedAt: str(pick(row, ['ack_at', 'acknowledged_at'])) || null, result: row.result_json ?? null }
+  })
 }
 export function normalizeList(raw: unknown): DeviceListPage {
-  const v = extract(raw)
-  const page = obj(v)
-  const data = Array.isArray(v) ? v : page?.items ?? page?.devices ?? page?.results ?? page?.records
-  if (!Array.isArray(data)) throw Error('Device List phải có items[] / devices[] / results[]; kiểm tra contract route.py')
+  const v = obj(obj(raw)?.message)
+  const data = v?.data
+  if (!Array.isArray(data)) throw Error('Device List API thiếu message.data[]')
   const items = data.map(normalizeDevice)
-  const total = num(v, ['total', 'total_count', 'total_devices', 'pagination.total']) ?? num(raw, ['total', 'pagination.total'])
-  const nextValue = pick(v, ['has_more', 'has_next', 'pagination.has_more', 'pagination.has_next'])
+  const total = num(v, ['pagination.total', 'pagination.total_count'])
+  const nextValue = pick(v, ['pagination.has_more'])
   return { items, total, next: typeof nextValue === 'boolean' ? nextValue : null }
 }
 export function normalizeDetail(raw: unknown): Device {
   const v = extract(raw)
   return normalizeDevice(v)
-}
-export function normalizeLatest(raw: unknown, deviceId: string): Latest {
-  const v = obj(extract(raw))
-  if (!v || v.device_id !== deviceId || !Array.isArray(v.metrics) || !('latest_event' in v)) {
-    throw Error('Latest API response không đúng device_id/metrics/latest_event')
-  }
-  return v as unknown as Latest
-}
-export function normalizeTelemetry(raw: unknown, deviceId: string): Telemetry {
-  const v = obj(extract(raw))
-  if (!v || v.device_id !== deviceId || !Array.isArray(v.points) ||
-      number(v.total) === null || number(v.limit) === null || number(v.offset) === null) {
-    throw Error('Telemetry response không đúng device_id/total/limit/offset/points')
-  }
-  return { device_id: deviceId, total: Number(v.total), limit: Number(v.limit), offset: Number(v.offset), points: v.points }
 }
 /** Only map known explicit schemas; never invent temperature/humidity. */
 export function parseS1Metric(metrics: unknown[]): { temperature: number | null; humidity: number | null } {

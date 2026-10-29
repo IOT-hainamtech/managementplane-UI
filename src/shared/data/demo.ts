@@ -19,7 +19,7 @@ export const demoAlarms: Alarm[] = [
 ]
 export const demoSummary: Summary = {
   sites: 1, zones: 2, devices: 4, online: 3, offline: 1,
-  alarmsTotal: 2, alarmsActive: 1, doorOpen: 1, recentAlarms: demoAlarms,
+  alarmsTotal: 2, alarmsActive: 1, doorOpen: 1, incidents: 0, recentAlarms: demoAlarms,
 }
 export const demoReadings = Array.from({ length: 12 }, (_, i) => ({
   timestamp: `2026-10-26T${String(i + 8).padStart(2, '0')}:00:00`,

@@ -27,10 +27,10 @@ async function fetchCatalog(signal: AbortSignal): Promise<Device[]> {
   throw Error('Danh sách vượt giới hạn 100 trang')
 }
 
-export function useCatalog(enabled: boolean) {
-  return usePolling(enabled, 'catalog', 60000, fetchCatalog)
+export function useCatalog(enabled: boolean, refreshKey = 0) {
+  return usePolling(enabled, 'catalog', 60000, fetchCatalog, refreshKey)
 }
 
-export function useSummary(enabled: boolean) {
-  return usePolling<Summary>(enabled, 'summary', 30000, dashboardApi.summary)
+export function useSummary(enabled: boolean, refreshKey = 0) {
+  return usePolling<Summary>(enabled, 'summary', 30000, dashboardApi.summary, refreshKey)
 }

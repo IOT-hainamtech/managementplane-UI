@@ -14,6 +14,7 @@ export function usePolling<T>(
   key: string,
   intervalMs: number,
   loader: (signal: AbortSignal) => Promise<T>,
+  refreshKey = 0,
 ): RemoteState<T> {
   const [refreshCount, setRefreshCount] = useState(0)
   const [state, setState] = useState<{
@@ -40,7 +41,7 @@ export function usePolling<T>(
       }))
     })
     return () => { active = false; controller.abort() }
-  }, [enabled, key, refreshCount])
+  }, [enabled, key, refreshCount, refreshKey])
 
   useEffect(() => {
     if (!enabled || intervalMs <= 0) return

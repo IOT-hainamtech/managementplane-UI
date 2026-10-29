@@ -1,18 +1,17 @@
 import { defineConfig } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
 
-const bridgeBaseUrl = process.env.BRIDGE_BASE_URL || 'http://127.0.0.1:8081';
-const bridgeAdminToken = process.env.BRIDGE_ADMIN_TOKEN || '';
+const frappeBaseUrl = process.env.FRAPPE_BASE_URL || 'http://nextgrp.localhost:8000';
 
 export default defineConfig({
   plugins: [pluginReact()],
   server: {
+    // Bind locally; the browser can still use nextgrp.localhost when that hostname resolves to loopback.
+    host: '127.0.0.1',
     proxy: {
-      '/local-api': {
-        target: bridgeBaseUrl,
+      '/api': {
+        target: frappeBaseUrl,
         changeOrigin: true,
-        pathRewrite: { '^/local-api': '/api' },
-        headers: bridgeAdminToken ? { 'X-Admin-Token': bridgeAdminToken } : {},
       },
     },
   },
