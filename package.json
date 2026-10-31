@@ -7,7 +7,7 @@
     "build": "rsbuild build",
     "dev": "rsbuild",
     "preview": "rsbuild preview",
-    "test": "node --experimental-strip-types src/core/api/normalize.test.ts"
+    "test": "node --experimental-strip-types --test src/core/api/normalize.test.ts src/core/realtime/realtimeEvents.test.ts"
   },
   "dependencies": {
     "frappe-react-sdk": "^1.17.1",

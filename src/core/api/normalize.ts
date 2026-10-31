@@ -226,6 +226,9 @@ function stateValue(value: unknown): DoorState | null {
 /** Read a door state only from an explicit door_state value or door event code. */
 export function parseDoorState(latest: Latest | null | undefined): DoorState | null {
   if (!latest) return null
+  const snapshotState = stateValue(latest.door_state)
+    ?? stateValue(latest.latest_snapshot?.door_state)
+  if (snapshotState) return snapshotState
   for (const metric of latest.metrics) {
     const row = obj(metric)
     if (!row) continue
@@ -237,7 +240,7 @@ export function parseDoorState(latest: Latest | null | undefined): DoorState | n
   }
   const event = obj(latest.latest_event)
   if (!event) return null
-  const data = obj(event.data)
+  const data = obj(event.data) ?? obj(obj(event.payload)?.data)
   const state = stateValue(pick(event, ['door_state', 'state', 'value', 'data.door_state', 'data.state', 'data.value']))
     ?? stateValue(pick(data, ['door_state', 'state', 'value']))
   if (state) return state

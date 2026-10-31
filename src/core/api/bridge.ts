@@ -1,5 +1,6 @@
 import type { Alarm, AlarmListPage, Device, DeviceCommand, DeviceConfiguration, DeviceListPage, Incident, IncidentListPage, Summary } from '../../shared/types/iot'
 import { normalizeAlarm, normalizeAlarmList, normalizeCommandList, normalizeDetail, normalizeDeviceConfiguration, normalizeIncident, normalizeIncidentList, normalizeList, normalizeSummary } from './normalize'
+import { normalizeEvents, normalizeLatest } from './deviceData'
 
 async function json(path: string, signal: AbortSignal): Promise<unknown> {
   const response = await fetch(`/api${path}`, {
@@ -45,6 +46,14 @@ const alarmFields = [
 const incidentFields = ['name', 'title', 'status', 'assigned_to', 'priority', 'due_date', 'device', 'site', 'zone', 'resolution', 'root_cause', 'closed_at']
 
 export const dashboardApi = {
+  latest(id: string, signal: AbortSignal) {
+    return json(`/method/nextgrp.nextgrp_iot.controller.device_data_controller.get_latest?${new URLSearchParams({ device_id: id })}`, signal)
+      .then(raw => normalizeLatest(raw, id))
+  },
+  events(id: string, signal: AbortSignal) {
+    return json(`/method/nextgrp.nextgrp_iot.controller.device_data_controller.get_events?${new URLSearchParams({ device_id: id, limit: '50', offset: '0' })}`, signal)
+      .then(raw => normalizeEvents(raw, id))
+  },
   summary(signal: AbortSignal): Promise<Summary> {
     return json(summaryMethod, signal).then(normalizeSummary)
   },

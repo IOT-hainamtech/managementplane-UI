@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { normalizeAlarmList, normalizeCommandList, normalizeDeviceConfiguration, normalizeIncidentList, normalizeList, normalizeSummary } from './normalize.ts'
+import { parseDoorState } from './normalize.ts'
+import { normalizeEvents, normalizeLatest } from './deviceData.ts'
 
 test('Frappe Summary reads message.summary and adds active alarm states', () => {
   const summary = normalizeSummary({ message: { summary: {
@@ -54,4 +56,47 @@ test('Command history reads the message.data list', () => {
   const commands = normalizeCommandList({ message: { data: [{ command_id: 'CMD-0001', device: 'NW-LOCAL-TH001', command_code: 'PING', status: 'Pending', attempt_count: 0 }] } })
   assert.equal(commands[0].id, 'CMD-0001')
   assert.equal(commands[0].attemptCount, 0)
+})
+
+test('S6 reads top-level door_state and preserves offline/STALE data', () => {
+  const latest = normalizeLatest({ message: {
+    device_id: 'door-1', door_state: 'closed', metrics: [],
+    online_status: 'offline', data_status: 'STALE',
+    latest_event: { event_type: 'DOOR_OPENED', door_state: 'open' },
+  } }, 'door-1')
+  assert.equal(parseDoorState(latest), 'closed')
+  assert.equal(latest.data_status, 'STALE')
+  assert.equal(latest.online_status, 'offline')
+})
+
+test('S6 supports latest_snapshot and explicit false without inventing state', () => {
+  assert.equal(parseDoorState(normalizeLatest({ device_id: 'door-1', latest_snapshot: { door_state: 'open', data_status: 'STALE' } }, 'door-1')), 'open')
+  assert.equal(parseDoorState(normalizeLatest({ device_id: 'door-1', door_state: false }, 'door-1')), 'closed')
+  assert.equal(parseDoorState(normalizeLatest({ device_id: 'door-1', metrics: [] }, 'door-1')), null)
+})
+
+test('S6 events become chronological history with independent open/closed states', () => {
+  const result = normalizeEvents({ message: { device_id: 'door-1', total: 2, limit: 50, offset: 0, events: [
+    { event_id: 'event-2', event_type: 'DOOR_CLOSED', event_at: '2026-10-30T14:44:07Z', payload: { data: { door_state: 'closed' } } },
+    { event_id: 'event-1', event_type: 'DOOR_OPENED', event_at: '2026-10-30T14:43:29Z', payload: { data: { door_state: 'open' } } },
+  ] } }, 'door-1')
+  assert.deepEqual(result.events.map(event => [event.id, event.state]), [['event-1', 'open'], ['event-2', 'closed']])
+  assert.equal(result.total, 2)
+})
+
+test('S6 rejects a different Device response and malformed event envelopes', () => {
+  assert.throws(() => normalizeLatest({ message: { device_id: 'other' } }, 'door-1'), /Device ID/)
+  assert.throws(() => normalizeEvents({ device_id: 'other', events: [] }, 'door-1'), /Device ID/)
+  assert.throws(() => normalizeEvents({ device_id: 'door-1' }, 'door-1'), /events/)
+  assert.deepEqual(normalizeEvents({ device_id: 'door-1', events: [] }, 'door-1').events, [])
+})
+
+test('S6 excludes unrelated/invalid events and duplicate IDs', () => {
+  const event = { event_id: 'event-1', event_type: 'DOOR_OPENED', event_at: '2026-10-30T14:43:29Z' }
+  const result = normalizeEvents({ device_id: 'door-1', events: [
+    event, event, { ...event, event_id: 'event-2', event_type: 'HEARTBEAT' },
+    { ...event, event_id: 'event-3', event_at: 'bad timestamp' },
+  ] }, 'door-1')
+  assert.equal(result.events.length, 1)
+  assert.equal(result.events[0].state, 'open')
 })

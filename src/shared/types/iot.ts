@@ -37,6 +37,23 @@ export interface Latest {
   device_id: string
   metrics: unknown[]
   latest_event: unknown | null
+  door_state?: unknown
+  latest_snapshot?: Record<string, unknown> | null
+  data_status?: string | null
+  online_status?: string | null
+}
+export interface DoorEvent {
+  id: string
+  type: string
+  timestamp: string
+  state: DoorState
+}
+export interface DeviceEvents {
+  device_id: string
+  total: number
+  limit: number
+  offset: number
+  events: DoorEvent[]
 }
 export interface Telemetry {
   device_id: string

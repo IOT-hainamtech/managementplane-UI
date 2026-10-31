@@ -454,6 +454,95 @@ p {
   height: 340px;
 }
 
+.chart-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  padding: 20px;
+  border: 1px dashed #dbe3ed;
+  border-radius: 10px;
+  color: #8491a2;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.device-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  gap: 14px;
+}
+
+.device-list-visuals {
+  margin: 16px 0 22px;
+}
+
+.device-status-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #e3e7ef;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.device-status-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.device-status-head > div:last-child {
+  min-width: 0;
+}
+
+.device-status-head small,
+.device-status-note {
+  display: block;
+  margin-top: 5px;
+  color: #8491a2;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.device-ring {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  flex: none;
+  border: 5px solid #dbe3ed;
+  border-radius: 50%;
+  color: #64748b;
+  background: #fff;
+}
+
+.device-ring.online {
+  border-color: #22a06b;
+  color: #16894d;
+}
+
+.device-ring.offline {
+  border-color: #e5484d;
+  color: #df3d44;
+}
+
+.device-status-readings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.device-status-readings span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  color: #465466;
+  background: #eef2f7;
+  font-size: 12px;
+}
+
 .readings {
   display: flex;
   gap: 16px;
