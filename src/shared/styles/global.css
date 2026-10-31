@@ -184,11 +184,10 @@ p {
 }
 
 /* ==========================================================
-   06. BUTTONS & MODE SWITCH
+   06. BUTTONS
    ========================================================== */
 
-.btn,
-.mode-switch button {
+.btn {
   padding: 10px 15px;
 
   background: #fff;
@@ -204,17 +203,7 @@ p {
   gap: 7px;
 }
 
-.mode-switch {
-  display: flex;
-  gap: 4px;
-}
 
-.mode-switch button.selected {
-  color: var(--color-primary-dark);
-  background: #e7efff;
-  border-color: #cbdcfb;
-  font-weight: 700;
-}
 
 /* ==========================================================
    07. PAGE HEADING
@@ -1047,3 +1036,15 @@ tbody tr:hover {
     font-size: 23px;
   }
 }
+
+/* Operator-facing status and reference information */
+.realtime-status.connected { color: #16754b; }
+.realtime-status.offline, .realtime-status.reconnecting { color: #976000; }
+.capability-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.reference-details { margin-top: 20px; color: #64748b; font-size: 13px; }
+.reference-details summary { cursor: pointer; }
+.reference-details p { overflow-wrap: anywhere; }
+.tabs button:focus-visible, a:focus-visible, button:focus-visible { outline: 2px solid #3478f6; outline-offset: 3px; }
+
+.door-events table { min-width: 0; }
+.door-events th, .door-events td { padding: 12px; }

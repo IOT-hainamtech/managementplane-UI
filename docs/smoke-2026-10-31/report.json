@@ -1,0 +1,100 @@
+{
+  "results": [
+    {
+      "name": "Dashboard: Vietnamese labels and live S1 readings",
+      "status": "PASS",
+      "elapsedMs": 929
+    },
+    {
+      "name": "Dashboard S6: two donuts, no history table, translated offline/STALE",
+      "status": "PASS",
+      "elapsedMs": 231
+    },
+    {
+      "name": "Alarm event refreshes alarm list without reading measurements again",
+      "status": "PASS",
+      "elapsedMs": 90
+    },
+    {
+      "name": "Alarm details: dates and user-facing field names",
+      "status": "PASS",
+      "elapsedMs": 56
+    },
+    {
+      "name": "Incident list refreshes from its own event without a catalog reload",
+      "status": "PASS",
+      "elapsedMs": 146
+    },
+    {
+      "name": "Incident details update immediately from an Incident event",
+      "status": "PASS",
+      "elapsedMs": 128
+    },
+    {
+      "name": "Device overview: current door state and no repeated history",
+      "status": "PASS",
+      "elapsedMs": 145
+    },
+    {
+      "name": "Profile and Rule events update readable configuration without extra measurements",
+      "status": "PASS",
+      "elapsedMs": 920
+    },
+    {
+      "name": "Commands update from their own event and show translated results",
+      "status": "PASS",
+      "elapsedMs": 149
+    },
+    {
+      "name": "Door history and events are separate views",
+      "status": "PASS",
+      "elapsedMs": 161
+    },
+    {
+      "name": "Measurement polling waits a full minute and ignores unrelated events",
+      "status": "PASS",
+      "elapsedMs": 826
+    },
+    {
+      "name": "Temporary read failure retains known state and hides transport details",
+      "status": "PASS",
+      "elapsedMs": 101
+    },
+    {
+      "name": "Realtime connection failure is visible with fallback messaging",
+      "status": "PASS",
+      "elapsedMs": 10
+    },
+    {
+      "name": "Mobile: navigation, tabs and event table remain contained",
+      "status": "PASS",
+      "elapsedMs": 566
+    },
+    {
+      "name": "Keyboard navigation selects device detail tabs",
+      "status": "PASS",
+      "elapsedMs": 18
+    },
+    {
+      "name": "No uncaught browser errors",
+      "status": "PASS",
+      "elapsedMs": 0
+    }
+  ],
+  "counts": {
+    "alarms": 3,
+    "devices": 8,
+    "summary": 11,
+    "configuration": 14,
+    "latest:SENSOR-001": 1,
+    "latest:DOOR-001": 6,
+    "alarm-detail": 2,
+    "incidents": 2,
+    "incident-detail": 2,
+    "device-detail": 6,
+    "commands": 2,
+    "events:DOOR-001": 2
+  },
+  "errors": [],
+  "scope": "Frontend smoke with fixture API and real Socket.IO; no production data modified"
+}

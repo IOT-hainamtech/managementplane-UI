@@ -1,0 +1,110 @@
+{
+  "results": [
+    {
+      "name": "Dashboard: Vietnamese labels and live S1 readings",
+      "status": "PASS",
+      "elapsedMs": 1366
+    },
+    {
+      "name": "Dashboard S6: two donuts, no history table, translated offline/STALE",
+      "status": "PASS",
+      "elapsedMs": 336
+    },
+    {
+      "name": "Alarm event refreshes alarm list without reading measurements again",
+      "status": "PASS",
+      "elapsedMs": 148
+    },
+    {
+      "name": "Alarm details: dates and user-facing field names",
+      "status": "PASS",
+      "elapsedMs": 58
+    },
+    {
+      "name": "Incident list refreshes from its own event without a catalog reload",
+      "status": "PASS",
+      "elapsedMs": 141
+    },
+    {
+      "name": "Incident details update immediately from an Incident event",
+      "status": "PASS",
+      "elapsedMs": 152
+    },
+    {
+      "name": "Device overview: current door state and no repeated history",
+      "status": "PASS",
+      "elapsedMs": 160
+    },
+    {
+      "name": "Profile and Rule events update readable configuration without extra measurements",
+      "status": "PASS",
+      "elapsedMs": 1409
+    },
+    {
+      "name": "Commands update from their own event and show translated results",
+      "status": "PASS",
+      "elapsedMs": 146
+    },
+    {
+      "name": "Door history and events are separate views",
+      "status": "PASS",
+      "elapsedMs": 144
+    },
+    {
+      "name": "Measurement polling waits a full minute and ignores unrelated events",
+      "status": "PASS",
+      "elapsedMs": 953
+    },
+    {
+      "name": "Temporary read failure retains known state and hides transport details",
+      "status": "PASS",
+      "elapsedMs": 150
+    },
+    {
+      "name": "Realtime connection failure is visible with fallback messaging",
+      "status": "PASS",
+      "elapsedMs": 17
+    },
+    {
+      "name": "Mobile: navigation, tabs and event table remain contained",
+      "status": "PASS",
+      "elapsedMs": 509
+    },
+    {
+      "name": "Keyboard navigation selects device detail tabs",
+      "status": "PASS",
+      "elapsedMs": 23
+    },
+    {
+      "name": "No sample mode; an empty catalog never falls back to generated devices",
+      "status": "PASS",
+      "elapsedMs": 253
+    },
+    {
+      "name": "A failed catalog read shows an error without sample-data fallback",
+      "status": "PASS",
+      "elapsedMs": 200
+    },
+    {
+      "name": "No uncaught browser errors",
+      "status": "PASS",
+      "elapsedMs": 1
+    }
+  ],
+  "counts": {
+    "alarms": 4,
+    "devices": 11,
+    "summary": 14,
+    "configuration": 15,
+    "latest:SENSOR-001": 1,
+    "latest:DOOR-001": 6,
+    "alarm-detail": 1,
+    "incidents": 2,
+    "incident-detail": 2,
+    "device-detail": 7,
+    "commands": 2,
+    "events:DOOR-001": 2
+  },
+  "errors": [],
+  "scope": "Frontend smoke with fixture API and real Socket.IO; no production data modified"
+}

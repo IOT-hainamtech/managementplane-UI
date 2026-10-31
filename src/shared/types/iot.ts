@@ -1,4 +1,3 @@
-export type Mode = 'demo' | 'live'
 export type ConnectionState = 'online' | 'offline' | 'unknown'
 export interface Device {
   deviceId: string
