@@ -30,7 +30,7 @@ export function DeviceDetailScreen({deviceId,device,catalogLoading,catalogError,
   const readings = useDoorData(deviceId, Boolean(record), 0, supportsDoorState && (tab === 'history' || tab === 'events'), record?.connection)
   const telemetry = useTelemetryData(deviceId, Boolean(record) && supportsS1 && tab === 'history')
   const latest = readings.latest.data
-    ? { ...readings.latest.data, online_status: record.connection }
+    ? { ...readings.latest.data, online_status: record?.connection ?? 'unknown' }
     : null
   const latestState = { ...readings.latest, data: latest }
   const measured = parseS1Metric(latest?.metrics ?? [])
