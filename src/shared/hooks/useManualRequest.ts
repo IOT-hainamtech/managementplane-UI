@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RemoteState } from './usePolling'
+import { snapshotRequests } from '../../core/api/snapshotRequests'
 
 type RequestState<T> = Omit<RemoteState<T>, 'refresh'> & { key: string }
 
-/** Fetches only after an explicit refresh action; it never polls on mount. */
-export function useManualRequest<T>(key: string, loader: (signal: AbortSignal) => Promise<T>): RemoteState<T> {
+/** Load an optional initial snapshot, then refresh on user actions or reconnect. */
+export function useManualRequest<T>(
+  key: string,
+  loader: (signal: AbortSignal) => Promise<T>,
+  options: { initial?: boolean; recovery?: number } = {},
+): RemoteState<T> {
+  const recovery = options.recovery ?? 0
   const [state, setState] = useState<RequestState<T>>({
     key, data: null, loading: false, error: null, updatedAt: null,
   })
@@ -13,7 +19,7 @@ export function useManualRequest<T>(key: string, loader: (signal: AbortSignal) =
   const inFlight = useRef<AbortController | null>(null)
   loaderRef.current = loader
 
-  const refresh = useCallback(() => {
+  const request = useCallback((initial: boolean) => {
     if (!key) return
     const id = ++requestId.current
     inFlight.current?.abort()
@@ -23,7 +29,11 @@ export function useManualRequest<T>(key: string, loader: (signal: AbortSignal) =
       key, data: previous.key === key ? previous.data : null, loading: true,
       error: null, updatedAt: previous.key === key ? previous.updatedAt : null,
     }))
-    loaderRef.current(controller.signal).then(data => {
+    const load = loaderRef.current
+    const result = initial
+      ? snapshotRequests.get(key, recovery, load)
+      : load(controller.signal)
+    result.then(data => {
       if (requestId.current === id && !controller.signal.aborted) {
         setState({ key, data, loading: false, error: null, updatedAt: new Date() })
       }
@@ -38,13 +48,19 @@ export function useManualRequest<T>(key: string, loader: (signal: AbortSignal) =
     }).finally(() => {
       if (requestId.current === id) inFlight.current = null
     })
-  }, [key])
+  }, [key, recovery])
+
+  const refresh = useCallback(() => request(false), [request])
 
   useEffect(() => () => {
     requestId.current += 1
     inFlight.current?.abort()
     inFlight.current = null
-  }, [key])
+  }, [key, recovery])
+
+  useEffect(() => {
+    if (options.initial) request(true)
+  }, [options.initial, request])
 
   const current = state.key === key ? state : {
     key, data: null, loading: false, error: null, updatedAt: null,
