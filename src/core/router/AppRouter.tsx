@@ -12,6 +12,7 @@ import { AlarmDetailScreen } from '../../modules/alarms/screens/AlarmDetailScree
 import { IncidentDetailScreen } from '../../modules/alarms/screens/IncidentDetailScreen'
 import { IncidentsScreen } from '../../modules/alarms/screens/IncidentsScreen'
 import { RefreshContext, useFrappeRealtime } from '../realtime/useFrappeRealtime'
+import { useInitialDeviceStatuses } from '../../modules/devices/hooks/useDeviceData'
 
 function Workspace() {
   const [manualRefresh, setManualRefresh] = useState(0)
@@ -19,6 +20,7 @@ function Workspace() {
   const catalog = useCatalog(true, manualRefresh + catalogRevision)
   const deviceIds = (catalog.data ?? []).map(device => device.docName || device.deviceId)
   const realtime = useFrappeRealtime(true, deviceIds)
+  useInitialDeviceStatuses(catalog.data ?? [], realtime.recovery, realtime.applyDeviceStatus)
   const summary = useSummary(true, manualRefresh + realtime.revisions.summary)
   const lastDeviceRevision = useRef(realtime.revisions.devices)
   useEffect(() => {
@@ -29,8 +31,7 @@ function Workspace() {
   }, [realtime.revisions.devices])
   const devices = (catalog.data ?? []).map(device => {
     const status = realtime.deviceStatuses[device.deviceId]
-    // Stored status can outlive the Data Plane connection. Only show a live
-    // state after a socket update or an explicit IF-07 check in this session.
+    // A saved Online value is not a fresh observation from Data Plane.
     return status
       ? { ...device, connection: status.state, lastSeen: status.lastSeen ?? device.lastSeen }
       : { ...device, connection: "unknown" as const }
@@ -41,7 +42,7 @@ function Workspace() {
     online: devices.filter(device => device.connection === 'online').length,
     offline: devices.filter(device => device.connection === 'offline').length,
   } : null
-  return <RefreshContext.Provider value={{ ...realtime.revisions, manual: manualRefresh, deviceStatuses: realtime.deviceStatuses, deviceEvents: realtime.deviceEvents, applyDeviceStatus: realtime.applyDeviceStatus }}><AppShell
+  return <RefreshContext.Provider value={{ ...realtime.revisions, manual: manualRefresh, recovery: realtime.recovery, deviceStatuses: realtime.deviceStatuses, deviceEvents: realtime.deviceEvents, applyDeviceStatus: realtime.applyDeviceStatus }}><AppShell
     catalogCount={catalog.loading ? 'đang tải' : String(catalog.data?.length ?? '—')}
     error={catalog.error || summary.error}
     connection={realtime.connection}
