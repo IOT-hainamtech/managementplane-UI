@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Device } from '../../shared/types/iot'
 import { AppShell } from '../../shared/components/AppShell'
 import { NotFoundScreen } from '../../shared/screens/NotFoundScreen'
@@ -15,18 +15,40 @@ import { RefreshContext, useFrappeRealtime } from '../realtime/useFrappeRealtime
 
 function Workspace() {
   const [manualRefresh, setManualRefresh] = useState(0)
-  const realtime = useFrappeRealtime(true)
-  const catalog = useCatalog(true, manualRefresh + realtime.revisions.devices)
+  const [catalogRevision, setCatalogRevision] = useState(0)
+  const catalog = useCatalog(true, manualRefresh + catalogRevision)
+  const deviceIds = (catalog.data ?? []).map(device => device.docName || device.deviceId)
+  const realtime = useFrappeRealtime(true, deviceIds)
   const summary = useSummary(true, manualRefresh + realtime.revisions.summary)
-  const devices = catalog.data ?? []
-  return <RefreshContext.Provider value={{ ...realtime.revisions, manual: manualRefresh }}><AppShell
+  const lastDeviceRevision = useRef(realtime.revisions.devices)
+  useEffect(() => {
+    if (lastDeviceRevision.current !== realtime.revisions.devices) {
+      lastDeviceRevision.current = realtime.revisions.devices
+      setCatalogRevision(value => value + 1)
+    }
+  }, [realtime.revisions.devices])
+  const devices = (catalog.data ?? []).map(device => {
+    const status = realtime.deviceStatuses[device.deviceId]
+    // Stored status can outlive the Data Plane connection. Only show a live
+    // state after a socket update or an explicit IF-07 check in this session.
+    return status
+      ? { ...device, connection: status.state, lastSeen: status.lastSeen ?? device.lastSeen }
+      : { ...device, connection: "unknown" as const }
+  })
+  const liveSummary = summary.data ? {
+    ...summary.data,
+    devices: devices.length,
+    online: devices.filter(device => device.connection === 'online').length,
+    offline: devices.filter(device => device.connection === 'offline').length,
+  } : null
+  return <RefreshContext.Provider value={{ ...realtime.revisions, manual: manualRefresh, deviceStatuses: realtime.deviceStatuses, deviceEvents: realtime.deviceEvents, applyDeviceStatus: realtime.applyDeviceStatus }}><AppShell
     catalogCount={catalog.loading ? 'đang tải' : String(catalog.data?.length ?? '—')}
     error={catalog.error || summary.error}
     connection={realtime.connection}
     onRefresh={() => setManualRefresh(value => value + 1)}
   >
     <Routes>
-      <Route path="/" element={<DashboardScreen devices={devices} summary={summary.data} loading={catalog.loading || summary.loading} realtimeRevision={manualRefresh} />} />
+      <Route path="/" element={<DashboardScreen devices={devices} summary={liveSummary} loading={catalog.loading || summary.loading} realtimeRevision={manualRefresh} />} />
       <Route path="/devices" element={<DeviceListScreen devices={devices} loading={catalog.loading} error={catalog.error} />} />
       <Route path="/devices/:deviceId" element={<DeviceDetailRoute devices={devices} catalogLoading={catalog.loading} catalogError={catalog.error} realtimeRevision={manualRefresh} />} />
       <Route path="/alarms" element={<AlarmsScreen summary={summary.data} devices={devices} realtimeRevision={manualRefresh} />} />

@@ -1,4 +1,18 @@
 export type ConnectionState = 'online' | 'offline' | 'unknown'
+export interface DeviceStatusSnapshot {
+  deviceId: string
+  state: ConnectionState
+  lastSeen: string | null
+}
+export interface DeviceLiveEvent {
+  deviceId: string
+  eventId: string
+  eventType: 'DOOR_OPENED' | 'DOOR_CLOSED' | 'TELEMETRY_UPDATED'
+  eventAt: string
+  doorState?: DoorState
+  metrics: unknown[]
+  dataStatus: string | null
+}
 export interface Device {
   deviceId: string
   name: string
@@ -40,6 +54,10 @@ export interface Latest {
   latest_snapshot?: Record<string, unknown> | null
   data_status?: string | null
   online_status?: string | null
+  measured_at_utc?: string | null
+  received_at_utc?: string | null
+  age_seconds?: number | null
+  stale_after_seconds?: number | null
 }
 export interface DoorEvent {
   id: string
@@ -58,8 +76,8 @@ export interface Telemetry {
   device_id: string
   total: number
   limit: number
-  offset: number
-  points: unknown[]
+  nextCursor: string | null
+  points: S1Reading[]
 }
 export interface S1Reading { time: string; temperature: number; humidity: number }
 export type DoorState = 'open' | 'closed'
