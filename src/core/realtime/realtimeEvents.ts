@@ -9,6 +9,7 @@ export const initialRevisions: RealtimeRevisions = {
   devices: 0, alarms: 0, incidents: 0, configuration: 0, commands: 0, summary: 0,
 }
 const resourcesByDoctype: Record<string, RealtimeResource[]> = {
+  Device:['devices','summary'],
   Alarm: ['alarms', 'summary'],
   Incident: ['incidents', 'summary'],
   'Device Profile': ['configuration'],
@@ -26,6 +27,32 @@ export interface RealtimeSocket {
   connect: () => unknown
   disconnect: () => unknown
 }
+/** Rejoin document rooms on every connection, including rapid reconnects. */
+export function subscribeDeviceRooms(socket: RealtimeSocket, deviceIds: () => string[]) {
+  let joined = new Set<string>()
+  const sync = () => {
+    if (!socket.connected) { joined.clear(); return }
+    const next = new Set(deviceIds().filter(Boolean))
+    joined.forEach(id => { if (!next.has(id)) socket.emit('doc_unsubscribe', 'Device', id) })
+    next.forEach(id => { if (!joined.has(id)) socket.emit('doc_subscribe', 'Device', id) })
+    joined = next
+  }
+  const onConnect = () => { joined.clear(); sync() }
+  const onDisconnect = () => joined.clear()
+  socket.on('connect', onConnect)
+  socket.on('disconnect', onDisconnect)
+  sync()
+  return {
+    sync,
+    dispose() {
+      socket.off('connect', onConnect)
+      socket.off('disconnect', onDisconnect)
+      if (socket.connected) joined.forEach(id => socket.emit('doc_unsubscribe', 'Device', id))
+      joined.clear()
+    },
+  }
+}
+
 /** Refresh low-frequency resources and deliver high-frequency device events directly. */
 export function connectRealtime(
   socket: RealtimeSocket,
