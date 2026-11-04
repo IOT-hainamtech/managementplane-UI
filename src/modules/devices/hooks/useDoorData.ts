@@ -2,21 +2,31 @@ import type { ConnectionState, DeviceEvents, DoorEvent, Latest } from '../../../
 import { useCallback, useContext, useEffect, useRef } from 'react'
 import { RefreshContext } from '../../../core/realtime/useFrappeRealtime'
 import { dashboardApi } from '../../../core/api/bridge'
+import { obj } from '../../../core/api/normalize'
 import { isDeviceOnline } from './devicePolling'
 import { useManualRequest } from '../../../shared/hooks/useManualRequest'
 
 export function useDoorData(deviceId: string, enabled: boolean, refreshKey = 0, loadHistory = true, connection?: ConnectionState) {
   const changes = useContext(RefreshContext)
-  const latest = useManualRequest(`latest:${deviceId}`, signal => dashboardApi.latest(deviceId, signal))
-  const events = useManualRequest<DeviceEvents>(`events:${deviceId}`, signal => dashboardApi.events(deviceId, signal))
+  const latest = useManualRequest(`latest:${deviceId}`, signal => dashboardApi.latest(deviceId, signal), {
+    initial: enabled && Boolean(deviceId), recovery: changes.recovery,
+  })
+  const events = useManualRequest<DeviceEvents>(`events:${deviceId}`, signal => dashboardApi.events(deviceId, signal), {
+    initial: enabled && Boolean(deviceId) && loadHistory, recovery: changes.recovery,
+  })
   const socketEvents = [...(changes.deviceEvents[deviceId] ?? [])]
     .sort((a, b) => Date.parse(a.eventAt) - Date.parse(b.eventAt))
   const latestDoorEvent = [...socketEvents].reverse().find(event => event.doorState)
   const latestTelemetryEvent = [...socketEvents].reverse().find(event => event.metrics.length)
+  const liveMetrics = new Map<string, unknown>()
+  for (const metric of [...(latest.data?.metrics ?? []), ...socketEvents.flatMap(event => event.metrics)]) {
+    const row = obj(metric)
+    if (typeof row?.code === 'string') liveMetrics.set(row.code, metric)
+  }
   const socketLatest = socketEvents.length ? {
     ...(latest.data ?? { device_id: deviceId, metrics: [], latest_event: null }),
     device_id: deviceId,
-    metrics: latestTelemetryEvent?.metrics ?? latest.data?.metrics ?? [],
+    metrics: [...liveMetrics.values()],
     door_state: latestDoorEvent?.doorState ?? latest.data?.door_state,
     latest_event: latestDoorEvent ? {
       event_id: latestDoorEvent.eventId,
