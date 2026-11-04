@@ -54,7 +54,11 @@ export function DashboardScreen({devices,summary,loading,realtimeRevision}:{devi
         </>}
       </Panel>
       <Panel title="Kết nối thiết bị" subtitle="Tình trạng kết nối của các thiết bị">
-        {summary?.online!==null && summary?.online!==undefined && summary?.offline!==null && summary?.offline!==undefined ? <Donut online={summary.online} offline={summary.offline}/> : <Empty title="Chưa có thống kê kết nối" description="Thống kê sẽ xuất hiện khi nhận được thông tin kết nối."/>}
+        {loading && !devices.length ? <Empty title="Đang tải trạng thái kết nối…"/> : <Donut
+          online={devices.filter(device=>device.connection === 'online').length}
+          offline={devices.filter(device=>device.connection === 'offline').length}
+          unknown={devices.filter(device=>device.connection === 'unknown').length}
+        />}
       </Panel>
     </div>
     <div className="charts-grid">

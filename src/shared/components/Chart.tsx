@@ -6,8 +6,9 @@ export function SensorChart({rows}:{rows:S1Reading[]}) {
   if (!rows.length) return <Empty title="Chưa có lịch sử số đo" description="Lịch sử sẽ xuất hiện khi có đủ số đo nhiệt độ và độ ẩm." />
   return <div className="chart" role="img" aria-label="Lịch sử nhiệt độ và độ ẩm"><ResponsiveContainer width="100%" height="100%"><LineChart data={rows}><CartesianGrid stroke="#e8edf4" strokeDasharray="3 4"/><XAxis dataKey="time" tick={{fontSize:10}} tickFormatter={v=>new Date(String(v)).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}/><YAxis tick={{fontSize:10}} tickFormatter={formatMeasurement}/><Tooltip formatter={formatMeasurement} labelFormatter={value=>new Date(String(value)).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}/><Legend/><Line isAnimationActive={false} type="monotone" dataKey="temperature" name="Nhiệt độ (°C)" stroke="#f59e0b" dot={false} strokeWidth={2}/><Line isAnimationActive={false} type="monotone" dataKey="humidity" name="Độ ẩm (%)" stroke="#3478f6" dot={false} strokeWidth={2}/></LineChart></ResponsiveContainer></div>
 }
-export function Donut({online,offline}:{online:number;offline:number}) {
-  const values = [{name:'Đang kết nối',value:online,color:'#22a06b'},{name:'Mất kết nối',value:offline,color:'#e5484d'}]
+export function Donut({online,offline,unknown = 0}:{online:number;offline:number;unknown?:number}) {
+  if (online + offline + unknown === 0) return <Empty title="Chưa có thiết bị để thống kê" />
+  const values = [{name:'Đang kết nối',value:online,color:'#22a06b'},{name:'Mất kết nối',value:offline,color:'#e5484d'},{name:'Chưa xác định',value:unknown,color:'#dbe3ed'}]
   return <div className="chart donut"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie isAnimationActive={false} data={values} dataKey="value" nameKey="name" innerRadius="56%" outerRadius="80%">{values.map(x=><Cell key={x.name} fill={x.color}/>)}</Pie><Tooltip/><Legend /></PieChart></ResponsiveContainer></div>
 }
 
