@@ -1,3 +1,4 @@
+import type { RemoteState } from '../hooks/usePolling'
 import type { ReactNode } from 'react'
 import type { ConnectionState } from '../types/iot'
 import { friendlyError, label } from '../presentation'
@@ -38,6 +39,15 @@ export function Status({state}:{state:ConnectionState}) {
 }
 export function ErrorNotice({message}:{message:string|null}) {
   return message ? <div role="alert" className="notice error">{friendlyError(message)}</div> : null
+}
+export function PollingError({ state }: { state: RemoteState<unknown> }) {
+  if (!state.error) return null
+  return <div>
+    <ErrorNotice message={state.error}/>
+    {(state.retryIntervalMs ?? 0) > 0 && <p className="muted" role="status">{state.loading
+      ? 'Đang thử kết nối lại…'
+      : `Hệ thống vẫn tự thử kết nối lại, khoảng ${Math.ceil(state.retryIntervalMs! / 1000)} giây/lần.${state.data ? ' Dữ liệu đang hiển thị là lần đọc thành công gần nhất.' : ''}`}</p>}
+  </div>
 }
 export function Updated({value}:{value:Date|null}) {
   return <span className="muted" title={value?.toISOString()}>{value ? `Cập nhật ${value.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}` : 'Chưa cập nhật'}</span>

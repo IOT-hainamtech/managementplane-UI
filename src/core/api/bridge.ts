@@ -1,28 +1,44 @@
 import type { Alarm, AlarmListPage, Device, DeviceCommand, DeviceConfiguration, DeviceListPage, Incident, IncidentListPage, Summary } from '../../shared/types/iot'
 import { normalizeAlarm, normalizeAlarmList, normalizeCommandList, normalizeDetail, normalizeDeviceConfiguration, normalizeIncident, normalizeIncidentList, normalizeList, normalizeSummary } from './normalize'
-import { normalizeEvents, normalizeLatest } from './deviceData'
+import { normalizeDeviceStatus, normalizeEvents, normalizeLatest, normalizeTelemetry } from './deviceData'
 
 async function json(path: string, signal: AbortSignal): Promise<unknown> {
-  const response = await fetch(`/api${path}`, {
-    signal, method: 'GET', cache: 'no-store', credentials: 'include', headers: { Accept: 'application/json' },
-  })
-  if (!response.ok) {
-    let info = response.status === 401 || response.status === 403
-      ? `Frappe từ chối truy cập (HTTP ${response.status}); kiểm tra phiên đăng nhập và quyền đọc.`
-      : `HTTP ${response.status}`
-    try {
-      const body: unknown = await response.json()
-      if (body && typeof body === 'object') {
-        if ('detail' in body && typeof body.detail === 'string') info = body.detail
-        else if ('error' in body && typeof body.error === 'string') info = body.error
-      }
-    } catch { /* HTTP message remains */ }
-    throw Error(info)
-  }
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  signal.addEventListener('abort', abort, { once: true })
+  if (signal.aborted) controller.abort()
+  let timedOut = false
+  // Bound both headers and JSON-body reads so a stalled proxy cannot keep
+  // usePolling's in-flight guard locked indefinitely.
+  const timeout = setTimeout(() => { timedOut = true; controller.abort() }, 25_000)
   try {
-    return await response.json() as unknown
-  } catch {
-    throw Error('Frappe API không trả JSON; kiểm tra phiên đăng nhập và proxy /api.')
+    const response = await fetch(`/api${path}`, {
+      signal: controller.signal, method: 'GET', cache: 'no-store', credentials: 'include', headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) {
+      let info = response.status === 401 || response.status === 403
+        ? `Frappe từ chối truy cập (HTTP ${response.status}); kiểm tra phiên đăng nhập và quyền đọc.`
+        : `HTTP ${response.status}`
+      try {
+        const body: unknown = await response.json()
+        if (body && typeof body === 'object') {
+          if ('detail' in body && typeof body.detail === 'string') info = body.detail
+          else if ('error' in body && typeof body.error === 'string') info = body.error
+        }
+      } catch { /* HTTP message remains */ }
+      throw Error(info)
+    }
+    try {
+      return await response.json() as unknown
+    } catch {
+      throw Error('Frappe API không trả JSON; kiểm tra phiên đăng nhập và proxy /api.')
+    }
+  } catch (error) {
+    if (timedOut) throw Error('Request timeout; please retry')
+    throw error
+  } finally {
+    clearTimeout(timeout)
+    signal.removeEventListener('abort', abort)
   }
 }
 
@@ -46,6 +62,14 @@ const alarmFields = [
 const incidentFields = ['name', 'title', 'status', 'assigned_to', 'priority', 'due_date', 'device', 'site', 'zone', 'resolution', 'root_cause', 'closed_at']
 
 export const dashboardApi = {
+  deviceStatus(id: string, signal: AbortSignal) {
+    return json(`/method/nextgrp.nextgrp_iot.controller.device_data_controller.get_status?${new URLSearchParams({ device_id: id })}`, signal)
+      .then(raw => normalizeDeviceStatus(raw, id))
+  },
+  telemetry(id: string, signal: AbortSignal) {
+    return json(`/method/nextgrp.nextgrp_iot.controller.device_data_controller.get_telemetry?${new URLSearchParams({ device_id: id, limit: '100' })}`, signal)
+      .then(raw => normalizeTelemetry(raw, id))
+  },
   latest(id: string, signal: AbortSignal) {
     return json(`/method/nextgrp.nextgrp_iot.controller.device_data_controller.get_latest?${new URLSearchParams({ device_id: id })}`, signal)
       .then(raw => normalizeLatest(raw, id))

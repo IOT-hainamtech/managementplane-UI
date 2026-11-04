@@ -1,3 +1,5 @@
+import type { Latest } from './types/iot'
+
 const labels: Record<string, string> = {
   new: 'Mới', acknowledged: 'Đã tiếp nhận', 'in progress': 'Đang xử lý', in_progress: 'Đang xử lý',
   closed: 'Đã đóng', open: 'Đang mở', resolved: 'Đã xử lý', cancelled: 'Đã hủy', canceled: 'Đã hủy',
@@ -20,6 +22,33 @@ export function label(value: unknown, fallback = '—'): string {
   if (value === null || value === undefined || value === '') return fallback
   const text = String(value).trim()
   return labels[text.toLowerCase()] ?? text
+}
+
+const measurementFormat = new Intl.NumberFormat('en-US', {
+  useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 2,
+})
+
+export function formatMeasurement(value: unknown): string {
+  if (typeof value === 'number') return Number.isFinite(value) ? measurementFormat.format(value) : '—'
+  if (value === null || value === undefined || value === '') return '—'
+  return String(value)
+}
+
+export function freshnessLabel(latest: Latest): string {
+  if (latest.data_status?.toUpperCase() === 'STALE') {
+    const measured = Date.parse(latest.measured_at_utc ?? '')
+    const received = Date.parse(latest.received_at_utc ?? '')
+    const age = latest.age_seconds
+    const threshold = latest.stale_after_seconds
+    if (Number.isFinite(measured) && Number.isFinite(received)
+      && typeof age === 'number' && Number.isFinite(age)
+      && typeof threshold === 'number' && threshold > 0) {
+      // Derive receipt age using Data Plane's clock, independent of browser clock.
+      const receivedAge = age - (received - measured) / 1000
+      if (receivedAge >= -5 && receivedAge <= threshold) return 'Nhận mới · thời điểm đo trễ'
+    }
+  }
+  return label(latest.data_status)
 }
 
 export function profileLabel(code: string): string {

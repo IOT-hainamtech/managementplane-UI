@@ -1,11 +1,11 @@
-import { profileLabel } from '../../../shared/presentation'
+import { formatMeasurement, freshnessLabel, label, profileLabel } from '../../../shared/presentation'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Bell, Droplets, Thermometer } from 'lucide-react'
 import type { Device, Summary } from '../../../shared/types/iot'
 import { parseLatestMetrics, parseS1Metric } from '../../../core/api/normalize'
 import { Donut } from '../../../shared/components/Chart'
-import { Count, Empty, ErrorNotice, Panel } from '../../../shared/components/UI'
+import { Count, Empty, ErrorNotice, PollingError, Panel, Updated } from '../../../shared/components/UI'
 import { DashboardStats } from '../components/DashboardStats'
 import { DeviceTable } from '../../devices/components/DeviceTable'
 import { AlarmTable } from '../../alarms/components/AlarmTable'
@@ -25,8 +25,11 @@ export function DashboardScreen({devices,summary,loading,realtimeRevision}:{devi
   const supportsDoorState = selectedPoints.some(point=>point.code === 'door_state')
   const supportsS1 = selectedPoints.some(point=>['temperature', 'humidity'].includes(point.code))
   useEffect(()=>{ if(preferred && !devices.some(device=>device.deviceId===preferred)) setPreferred('') },[devices,preferred])
-  const readings = useDoorData(selectedId, Boolean(selectedId), 0, false)
+  const readings = useDoorData(selectedId, Boolean(selectedId), 0, false, selectedDevice?.connection)
   const latest = readings.latest.data
+    ? { ...readings.latest.data, online_status: selectedDevice?.connection ?? 'unknown' }
+    : null
+  const latestState = { ...readings.latest, data: latest }
   const measured = parseS1Metric(latest?.metrics ?? [])
   const metrics = parseLatestMetrics(latest?.metrics ?? [], selectedPoints)
   const alarms = useAlarms(true, realtimeRevision, 1, 4)
@@ -44,9 +47,10 @@ export function DashboardScreen({devices,summary,loading,realtimeRevision}:{devi
     </Panel>
     <div className="charts-grid">
       <Panel title={supportsDoorState ? 'Trạng thái cửa' : supportsS1 ? 'Nhiệt độ và độ ẩm' : profileLabel(selectedDevice?.profile ?? '')} subtitle={`Thiết bị đang xem · ${selectedId || 'Chưa chọn thiết bị'}`} action={<select aria-label="Chọn thiết bị" value={selectedId} onChange={event=>setPreferred(event.target.value)}>{devices.map(device=><option key={device.deviceId} value={device.deviceId}>{device.name || device.deviceId}</option>)}</select>}>
-        {!selectedId ? <Empty title="Chưa có thiết bị" description="Danh sách thiết bị đang trống hoặc chưa tải được."/> : supportsDoorState ? <DoorReadings latest={readings.latest} events={readings.events} onRetry={readings.refresh} showHistory={false}/> : <>
-          <ErrorNotice message={readings.latest.error}/>
-          {supportsS1 ? <><div className="readings"><div><Thermometer size={17}/> Nhiệt độ: <strong>{measured.temperature===null?'—':`${measured.temperature} °C`}</strong></div><div><Droplets size={17}/> Độ ẩm: <strong>{measured.humidity===null?'—':`${measured.humidity} %`}</strong></div></div><div className="chart-placeholder">Xem số đo gần nhất của thiết bị. Lịch sử nằm trong trang chi tiết.</div></> : configuration.loading ? <Empty title="Đang tải thông tin thiết bị…"/> : metrics.length ? <div className="sensor-metrics">{metrics.map(metric=><div key={metric.code}><strong>{String(metric.value)}{metric.unit ? ` ${metric.unit}` : ''}</strong><small>{metric.label}</small></div>)}</div> : <Empty title={configuration.error ? 'Chưa tải được loại thiết bị' : 'Chưa có thông số theo dõi'}/>}
+        {!selectedId ? <Empty title="Chưa có thiết bị" description="Danh sách thiết bị đang trống hoặc chưa tải được."/> : supportsDoorState ? <DoorReadings latest={latestState} events={readings.events} onRetry={readings.refresh} showHistory={false}/> : <>
+          <PollingError state={readings.latest}/>
+          <div className="readings">{latest?.online_status && <span className="tag info">{label(latest.online_status)}</span>}{!readings.latest.error && latest?.data_status && <span className={`tag ${latest.data_status === 'STALE' ? 'warning' : 'info'}`}>{freshnessLabel(latest)}</span>}<Updated value={readings.latest.updatedAt}/></div>
+          {supportsS1 ? <><div className="readings"><div><Thermometer size={17}/> Nhiệt độ: <strong>{measured.temperature===null?'—':`${formatMeasurement(measured.temperature)} °C`}</strong></div><div><Droplets size={17}/> Độ ẩm: <strong>{measured.humidity===null?'—':`${formatMeasurement(measured.humidity)} %`}</strong></div><button className="btn outline" onClick={readings.refresh} disabled={readings.latest.loading}>Làm mới số đo</button></div><div className="chart-placeholder">Xem số đo gần nhất của thiết bị. Lịch sử nằm trong trang chi tiết.</div></> : configuration.loading ? <Empty title="Đang tải thông tin thiết bị…"/> : metrics.length ? <div className="sensor-metrics">{metrics.map(metric=><div key={metric.code}><strong>{formatMeasurement(metric.value)}{metric.unit ? ` ${metric.unit}` : ''}</strong><small>{metric.label}</small></div>)}</div> : <Empty title={configuration.error ? 'Chưa tải được loại thiết bị' : 'Chưa có thông số theo dõi'}/>}
         </>}
       </Panel>
       <Panel title="Kết nối thiết bị" subtitle="Tình trạng kết nối của các thiết bị">

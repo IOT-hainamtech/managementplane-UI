@@ -3,7 +3,7 @@ import type { DeviceEvents, Latest } from '../../../shared/types/iot'
 import type { RemoteState } from '../../../shared/hooks/usePolling'
 import { parseDoorState } from '../../../core/api/normalize'
 import { DoorHistoryChart, DoorStateDonut } from '../../../shared/components/Chart'
-import { Empty, ErrorNotice, Updated } from '../../../shared/components/UI'
+import { Empty, PollingError, Updated } from '../../../shared/components/UI'
 import { formatDate, label } from '../../../shared/presentation'
 
 export function DoorReadings({ latest, events, onRetry, showHistory = true, view = 'overview' }: {
@@ -19,15 +19,15 @@ export function DoorReadings({ latest, events, onRetry, showHistory = true, view
       <div className="readings"><DoorOpen size={17}/> Trạng thái gần nhất: <strong>{state === 'open' ? 'Đang mở' : state === 'closed' ? 'Đang đóng' : latest.loading ? 'Đang tải…' : 'Chưa có trạng thái'}</strong></div>
       <div className="readings">
         {latest.data?.online_status && <span className={`tag ${latest.data.online_status.toLowerCase() === 'offline' ? 'warning' : 'info'}`}>{label(latest.data.online_status)}</span>}
-        {latest.data?.data_status && <span className={`tag ${latest.data.data_status.toUpperCase() === 'STALE' ? 'warning' : 'info'}`}>{label(latest.data.data_status)}</span>}
+        {!latest.error && latest.data?.data_status && <span className={`tag ${latest.data.data_status.toUpperCase() === 'STALE' ? 'warning' : 'info'}`}>{label(latest.data.data_status)}</span>}
       </div>
       {latest.data?.data_status?.toUpperCase() === 'STALE' && <p className="muted">Đây là trạng thái ghi nhận gần nhất; dữ liệu đã cũ.</p>}
       {typeof measuredAt === 'string' && <p className="muted">Ghi nhận lúc {formatDate(measuredAt)}</p>}
-      <ErrorNotice message={latest.error}/>
+      <PollingError state={latest}/>
       <DoorStateDonut state={state}/>
     </>}
     {showPast && <>
-      <ErrorNotice message={events.error}/>
+      <PollingError state={events}/>
       {events.data?.events.length ? <>
         {view === 'history' && <DoorHistoryChart events={events.data.events}/>}
         <p className="muted">Đang xem {events.data.events.length} sự kiện cửa gần nhất · Tổng số sự kiện: {events.data.total}.</p>
