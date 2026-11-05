@@ -1,6 +1,7 @@
 import type { Alarm, AlarmListPage, Device, DeviceCommand, DeviceConfiguration, DeviceListPage, Incident, IncidentListPage, Summary } from '../../shared/types/iot'
 import { normalizeAlarm, normalizeAlarmList, normalizeCommandList, normalizeDetail, normalizeDeviceConfiguration, normalizeIncident, normalizeIncidentList, normalizeList, normalizeSummary } from './normalize'
 import { normalizeDeviceStatus, normalizeEvents, normalizeLatest, normalizeTelemetry } from './deviceData'
+import { machineLearningFilters } from '../../modules/alarms/machineLearning'
 
 async function json(path: string, signal: AbortSignal): Promise<unknown> {
   const controller = new AbortController()
@@ -104,14 +105,15 @@ export const dashboardApi = {
   deviceConfiguration(id: string, signal: AbortSignal): Promise<DeviceConfiguration> {
     return json(`${configMethod}?${new URLSearchParams({ device_id: id })}`, signal).then(normalizeDeviceConfiguration)
   },
-  alarmPage(page: number, size: number, signal: AbortSignal, deviceId?: string): Promise<AlarmListPage> {
+  alarmPage(page: number, size: number, signal: AbortSignal, deviceId?: string, source: 'all' | 'ml' = 'all'): Promise<AlarmListPage> {
     const query = new URLSearchParams({
       fields: JSON.stringify(alarmFields),
       order_by: 'last_occurred desc',
       limit_start: String((page - 1) * size),
       limit_page_length: String(size),
     })
-    if (deviceId) query.set('filters', JSON.stringify([['device', '=', deviceId]]))
+    const filters = [...(deviceId ? [['device', '=', deviceId]] : []), ...(source === 'ml' ? machineLearningFilters() : [])]
+    if (filters.length) query.set('filters', JSON.stringify(filters))
     return json(`/resource/Alarm?${query}`, signal).then(raw => normalizeAlarmList(raw, page, size))
   },
   alarm(name: string, signal: AbortSignal): Promise<Alarm> {
