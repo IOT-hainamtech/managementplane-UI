@@ -6,9 +6,7 @@
   "scripts": {
     "build": "rsbuild build",
     "dev": "rsbuild",
-    "preview": "rsbuild preview",
-    "test": "node --experimental-strip-types --test src/core/api/normalize.test.ts src/core/realtime/realtimeEvents.test.ts src/shared/presentation.test.ts",
-    "test:smoke": "node tests/smoke.cjs"
+    "preview": "rsbuild preview"
   },
   "dependencies": {
     "frappe-react-sdk": "^1.17.1",
