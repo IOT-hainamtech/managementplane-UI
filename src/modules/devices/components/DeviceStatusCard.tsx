@@ -1,10 +1,9 @@
 import { Link } from 'react-router'
-import { DoorOpen, Thermometer, Cpu } from 'lucide-react'
+import { AlertTriangle, DoorOpen, Thermometer, Cpu } from 'lucide-react'
 import type { Device, ProfileDataPoint } from '../../../shared/types/iot'
 import { useDeviceConfiguration } from '../hooks/useDeviceData'
-import { label, profileLabel } from '../../../shared/presentation'
+import { friendlyError, label, profileLabel } from '../../../shared/presentation'
 import { useManualDeviceStatusCheck } from '../hooks/useDeviceData'
-import { ErrorNotice } from '../../../shared/components/UI'
 
 export function DeviceStatusCard({ device }: { device: Device }) {
   const statusCheck = useManualDeviceStatusCheck()
@@ -15,12 +14,12 @@ export function DeviceStatusCard({ device }: { device: Device }) {
   return <article className="device-status-card">
     <div className="device-status-head"><div className={`device-ring ${device.connection}`} aria-label={`Kết nối: ${label(device.connection)}`}>
       {hasDoor ? <DoorOpen size={25}/> : hasSensor ? <Thermometer size={25}/> : <Cpu size={25}/>}
-    </div><div><Link className="text-link" to={`/devices/${encodeURIComponent(device.deviceId)}`}>{device.name || device.deviceId}</Link><small>{profileLabel(device.profile)}</small></div></div>
+    </div><div><Link className="text-link" to={`/devices/${encodeURIComponent(device.deviceId)}`}>{device.displayName || 'Chưa đặt tên'}</Link><small>{profileLabel(device.profile)} · {device.deviceId}</small></div></div>
     <div className="device-status-readings"><Link className="text-link" to={`/devices/${encodeURIComponent(device.deviceId)}`}>{hasDoor ? 'Xem trạng thái cửa' : hasSensor ? 'Xem nhiệt độ và độ ẩm' : 'Xem thông tin thiết bị'} →</Link></div>
     <small className="device-status-note">{label(device.connection)}</small>
     <button className="btn outline" disabled={statusCheck.loading} onClick={() => statusCheck.check(device.deviceId)}>
       {statusCheck.loading ? 'Đang kiểm tra…' : 'Kiểm tra kết nối'}
     </button>
-    <ErrorNotice message={statusCheck.error}/>
+    {statusCheck.error && <div className="device-status-toast" role="alert"><AlertTriangle size={18} aria-hidden="true"/><span>{friendlyError(statusCheck.error)}</span></div>}
   </article>
 }
