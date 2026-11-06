@@ -39,9 +39,11 @@ export function normalizeDevice(raw: unknown): Device {
   if (!v) throw Error('Device phải là object JSON')
   const deviceId = str(pick(v, ['device_id', 'deviceId', 'id']))
   if (!deviceId) throw Error('Device API thiếu trường device_id')
+  const displayName = str(pick(v, ['display_name', 'device_name'])) || null
   return {
     deviceId,
-    name: str(pick(v, ['device_name', 'display_name', 'name', 'device_id']), deviceId),
+    name: displayName || str(pick(v, ['name', 'device_id']), deviceId),
+    displayName,
     docName: str(pick(v, ['docname', 'name'])),
     profile: str(pick(v, ['profile_code', 'profile.profile_code', 'device_profile', 'profile.label', 'profile']), '—'),
     signalModel: str(pick(v, ['signal_model', 'profile.signal_model'])).toUpperCase(),

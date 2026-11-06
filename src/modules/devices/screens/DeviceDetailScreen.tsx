@@ -45,7 +45,7 @@ export function DeviceDetailScreen({deviceId,device,catalogLoading,catalogError,
   }
   return <div className="stack">
     <Link className="back" to="/devices"><ArrowLeft size={16}/> Quay lại thiết bị</Link>
-    <div className="detail-title"><div className="detail-icon"><Cpu/></div><div><h1>{record.name || record.deviceId}</h1><p>{profileLabel(record.profile)} · {record.site}</p></div><Status state={record.connection}/>
+    <div className="detail-title"><div className="detail-icon"><Cpu/></div><div><h1>{record.displayName || 'Chưa đặt tên'}</h1><p>{record.deviceId} · {profileLabel(record.profile)} · {record.site}</p></div><Status state={record.connection}/>
       <button className="btn outline" onClick={refresh} disabled={statusCheck.loading}><RefreshCcw size={15}/> {statusCheck.loading ? 'Đang kiểm tra…' : 'Làm mới'}</button>
     </div>
     {statusCheck.error && <ErrorNotice message={statusCheck.error}/>}
@@ -55,7 +55,7 @@ export function DeviceDetailScreen({deviceId,device,catalogLoading,catalogError,
     <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
     {tab==='overview' && <div className="stack">
       <Panel title="Thông tin thiết bị"><ErrorNotice message={detail.error}/><div className="info-grid">
-        <KV label="Mã thiết bị" value={deviceId}/><KV label="Tên thiết bị" value={record.name}/><KV label="Loại thiết bị" value={profileLabel(record.profile)}/>
+        <KV label="Tên hiển thị" value={record.displayName || 'Chưa đặt tên'}/><KV label="Mã thiết bị" value={deviceId}/><KV label="Loại thiết bị" value={profileLabel(record.profile)}/>
         <KV label="Địa điểm" value={record.site}/><KV label="Khu vực" value={record.zone}/><KV label="Trạng thái sử dụng" value={label(record.status)}/>
         <KV label="Phương thức kết nối" value={record.connectivity}/><KV label="Ghi nhận kết nối gần nhất" value={formatDate(record.lastSeen)}/>
       </div></Panel>

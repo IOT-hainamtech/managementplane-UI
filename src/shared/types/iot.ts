@@ -16,6 +16,7 @@ export interface DeviceLiveEvent {
 export interface Device {
   deviceId: string
   name: string
+  displayName: string | null
   docName?: string
   profile: string
   signalModel: string
