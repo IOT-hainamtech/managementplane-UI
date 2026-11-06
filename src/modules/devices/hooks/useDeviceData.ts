@@ -10,9 +10,23 @@ export function useDeviceDetail(id: string, enabled: boolean, refreshKey = 0) {
   return usePolling<Device>(enabled, `device:${id}`, 60000, signal => dashboardApi.device(id, signal), refreshKey + changes.devices)
 }
 
+const DEVICE_CONFIGURATION_CACHE_MS = 5 * 60_000
+
 export function useDeviceConfiguration(id: string, enabled: boolean) {
   const changes = useContext(RefreshContext)
-  return usePolling<DeviceConfiguration>(enabled, `config:${id}`, 60000, signal => dashboardApi.deviceConfiguration(id, signal), changes.configuration + changes.manual)
+  const revision = `${changes.configuration}:${changes.manual}`
+  return usePolling<DeviceConfiguration>(
+    enabled,
+    `config:${id}`,
+    snapshot => snapshot.error ? 60_000 : DEVICE_CONFIGURATION_CACHE_MS,
+    () => snapshotRequests.getCached(
+      `device-config:${id}`,
+      revision,
+      DEVICE_CONFIGURATION_CACHE_MS,
+      () => dashboardApi.deviceConfiguration(id, new AbortController().signal),
+    ),
+    changes.configuration + changes.manual,
+  )
 }
 
 export function useDeviceCommands(id: string, enabled: boolean) {

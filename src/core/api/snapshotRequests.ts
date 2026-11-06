@@ -1,6 +1,11 @@
 /** Share initial reads across components and limit simultaneous Data API calls. */
 export function createSnapshotRequests(concurrency = 2) {
   const cache = new Map<string, Promise<unknown>>()
+  const timedCache = new Map<string, {
+    revision: string | number
+    expiresAt: number
+    promise: Promise<unknown>
+  }>()
   const active = new Set<AbortController>()
   const queue: { start: () => void; cancel: () => void }[] = []
   let generation = 0
@@ -10,6 +15,32 @@ export function createSnapshotRequests(concurrency = 2) {
   }
 
   return {
+    getCached<T>(key: string, revision: string | number, ttlMs: number, load: () => Promise<T>): Promise<T> {
+      const now = Date.now()
+      for (const [cachedKey, entry] of timedCache) {
+        if (entry.expiresAt <= now) timedCache.delete(cachedKey)
+      }
+      const cached = timedCache.get(key)
+      if (cached && cached.revision === revision && cached.expiresAt > now) {
+        return cached.promise as Promise<T>
+      }
+
+      const entry = {
+        revision,
+        expiresAt: Number.POSITIVE_INFINITY,
+        promise: Promise.resolve().then(load),
+      }
+      timedCache.set(key, entry)
+      entry.promise.then(
+        () => {
+          if (timedCache.get(key) === entry) entry.expiresAt = Date.now() + Math.max(0, ttlMs)
+        },
+        () => {
+          if (timedCache.get(key) === entry) timedCache.delete(key)
+        },
+      )
+      return entry.promise
+    },
     get<T>(key: string, revision: number, load: (signal: AbortSignal) => Promise<T>): Promise<T> {
       if (revision < generation) return Promise.reject(new DOMException('Snapshot superseded', 'AbortError'))
       if (revision > generation) {
